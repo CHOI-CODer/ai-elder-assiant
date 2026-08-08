@@ -23,7 +23,7 @@ test("renders the AI doctor assistant page", async () => {
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>AI智能医生助手<\/title>/i);
   assert.match(html, /您好，有什么能够帮到您？/);
-  assert.match(html, /按住说话/);
+  assert.match(html, /点击进入/);
   assert.match(html, /https:\/\/choi-coder\.github\.io\/ai-for-elder\//);
   assert.match(html, /target="_blank"/);
   assert.match(html, /property="og:image" content="http:\/\/localhost\/og\.png"/);

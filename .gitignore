@@ -17,6 +17,7 @@
 /.next/
 /.vinext/
 /out/
+/.wrangler/
 
 # misc
 .DS_Store
@@ -37,6 +38,5 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 /dist/
-/.wrangler/
 /outputs/
 /work/
