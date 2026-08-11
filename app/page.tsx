@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 const CHAT_URL = "https://choi-coder.github.io/ai-for-elder/";
+const VOICE_TRIGGER_SELECTOR = ".ffd540ddb0af088e506e";
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function asset(path: string) {
@@ -38,20 +39,93 @@ export default function Home() {
   const [page, setPage] = useState<PageName>("doctor");
   const [medicationCompleted, setMedicationCompleted] = useState(true);
   const [playing, setPlaying] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
+  const [voiceFrameKey, setVoiceFrameKey] = useState(0);
   const [selectedFamily, setSelectedFamily] = useState<FamilyMember | null>(null);
   const [notice, setNotice] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const voiceFrameRef = useRef<HTMLIFrameElement>(null);
+  const listeningRef = useRef(false);
+  const voiceBridgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceBridgeAttemptsRef = useRef(0);
+  const callEndedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (voiceTimerRef.current) clearTimeout(voiceTimerRef.current);
+      if (voiceBridgeTimerRef.current) clearTimeout(voiceBridgeTimerRef.current);
+      if (callEndedTimerRef.current) clearTimeout(callEndedTimerRef.current);
       if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
     };
   }, []);
 
+  function showNotice(message: string, duration = 2200) {
+    setNotice(message);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(""), duration);
+  }
+
+  function clearVoiceBridgeTimer() {
+    if (!voiceBridgeTimerRef.current) return;
+    clearTimeout(voiceBridgeTimerRef.current);
+    voiceBridgeTimerRef.current = null;
+  }
+
+  function tryStartEmbeddedVoice() {
+    if (!listeningRef.current) return;
+
+    try {
+      const frameDocument = voiceFrameRef.current?.contentDocument;
+      const voiceControl = frameDocument?.querySelector<HTMLElement>(VOICE_TRIGGER_SELECTOR);
+      const clickableControl = voiceControl?.querySelector<HTMLElement>("button") ?? voiceControl;
+
+      if (clickableControl) {
+        clickableControl.click();
+        clearVoiceBridgeTimer();
+        return;
+      }
+    } catch {
+      // 本地开发与线上语音页来源不同，只有部署到同一 GitHub Pages 域名后才能控制内嵌页面。
+    }
+
+    voiceBridgeAttemptsRef.current += 1;
+    if (voiceBridgeAttemptsRef.current >= 60) {
+      listeningRef.current = false;
+      setListening(false);
+      showNotice("语音服务暂未就绪，请稍后重试", 2600);
+      return;
+    }
+
+    clearVoiceBridgeTimer();
+    voiceBridgeTimerRef.current = setTimeout(tryStartEmbeddedVoice, 250);
+  }
+
+  function startListening() {
+    listeningRef.current = true;
+    setListening(true);
+    voiceBridgeAttemptsRef.current = 0;
+    clearVoiceBridgeTimer();
+    tryStartEmbeddedVoice();
+  }
+
+  function stopListening() {
+    listeningRef.current = false;
+    setListening(false);
+    clearVoiceBridgeTimer();
+    voiceBridgeAttemptsRef.current = 0;
+
+    // 重新载入内嵌语音页会同时结束其中的音频播放和媒体连接。
+    setVoiceFrameKey((currentKey) => currentKey + 1);
+    setCallEnded(true);
+    if (callEndedTimerRef.current) clearTimeout(callEndedTimerRef.current);
+    callEndedTimerRef.current = setTimeout(() => setCallEnded(false), 2000);
+  }
+
   function changePage(nextPage: PageName) {
+    if (nextPage !== "doctor" && listeningRef.current) stopListening();
     setPage(nextPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -85,9 +159,7 @@ export default function Home() {
     if (!selectedFamily) return;
     const member = selectedFamily;
     closeCallDialog();
-    setNotice(`正在拨打${member}……`);
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = setTimeout(() => setNotice(""), 2200);
+    showNotice(`正在拨打${member}……`);
   }
 
   function playVoiceMessage() {
@@ -132,12 +204,18 @@ export default function Home() {
               <p>请点击按钮开始对话</p>
             </div>
 
-            <a className="voice-launch" href={CHAT_URL} target="_blank" rel="noopener noreferrer" aria-label="打开 AI 医生对话网页">
+            <button
+              className={`voice-launch ${listening ? "is-listening" : ""}`}
+              type="button"
+              onClick={listening ? stopListening : startListening}
+              aria-label={listening ? "结束 AI 医生语音通话" : "开始 AI 医生语音通话"}
+              aria-pressed={listening}
+            >
               <span className="microphone-disc" aria-hidden="true">
                 <Image src={asset("/assets/microphone.svg")} alt="" width={48} height={48} unoptimized />
               </span>
-              <span>点击进入</span>
-            </a>
+              <span aria-live="polite">{listening ? "正在聆听" : "点击进入"}</span>
+            </button>
           </section>
         ) : (
           <section className="records-page" aria-label="健康档案">
@@ -239,6 +317,24 @@ export default function Home() {
         <div className={`notice ${notice ? "show" : ""}`} role="status" aria-live="polite">
           {notice}
         </div>
+
+        <div className={`notice call-ended-notice ${callEnded ? "show" : ""}`} role="status" aria-live="polite">
+          {callEnded ? "通话结束" : ""}
+        </div>
+
+        <iframe
+          key={voiceFrameKey}
+          ref={voiceFrameRef}
+          className="voice-bridge-frame"
+          src={CHAT_URL}
+          title="AI医生语音服务"
+          allow="microphone; autoplay"
+          tabIndex={-1}
+          aria-hidden="true"
+          onLoad={() => {
+            if (listeningRef.current) tryStartEmbeddedVoice();
+          }}
+        />
       </section>
     </main>
   );
