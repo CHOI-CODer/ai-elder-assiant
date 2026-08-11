@@ -11,6 +11,8 @@ test("exports a GitHub Pages-compatible static site", async () => {
   assert.match(html, /<title>AI智能医生助手<\/title>/i);
   assert.match(html, /点击进入/);
   assert.match(html, /https:\/\/choi-coder\.github\.io\/ai-for-elder\//);
+  assert.match(html, /allow="microphone; autoplay"/);
+  assert.doesNotMatch(html, /target="_blank"/);
   assert.match(html, /\/ai-elder-assiant\/_next\//);
   assert.match(html, /\/ai-elder-assiant\/assets\/doctor\.png/);
   assert.match(
