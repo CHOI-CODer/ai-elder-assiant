@@ -25,7 +25,7 @@ test("renders the AI doctor assistant page", async () => {
   assert.match(html, /您好，有什么能够帮到您？/);
   assert.match(html, /点击进入/);
   assert.match(html, /https:\/\/choi-coder\.github\.io\/ai-for-elder\//);
-  assert.match(html, /target="_blank"/);
+  assert.doesNotMatch(html, /target="_blank"/);
   assert.match(html, /property="og:image" content="http:\/\/localhost\/og\.png"/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
@@ -36,5 +36,9 @@ test("includes all health-record interactions in the client page", async () => {
   assert.match(source, /我还没吃（点击完成）/);
   assert.match(source, /是否拨打/);
   assert.match(source, /正在播放语音/);
+  assert.match(source, /正在聆听/);
+  assert.match(source, /通话结束/);
+  assert.match(source, /VOICE_TRIGGER_SELECTOR/);
+  assert.match(source, /allow="microphone; autoplay"/);
   assert.match(source, /showModal\(\)/);
 });
