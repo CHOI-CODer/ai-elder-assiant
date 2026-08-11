@@ -211,12 +211,14 @@ a:focus-visible {
   justify-content: center;
   gap: 14px;
   color: #fff;
+  border: 0;
   text-decoration: none;
   border-radius: 50%;
   background: linear-gradient(145deg, #2366fb, #184fe8);
   box-shadow: 0 28px 58px -20px rgba(21, 87, 246, 0.68);
   font-size: clamp(22px, 5.6vw, 28px);
   font-weight: 560;
+  cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -227,6 +229,27 @@ a:focus-visible {
 
 .voice-launch:active {
   transform: scale(0.97);
+}
+
+.voice-launch.is-listening {
+  background: linear-gradient(145deg, #0fbf91, #07876a);
+  box-shadow: 0 28px 58px -20px rgba(8, 135, 106, 0.68);
+  animation: listening-pulse 1.8s ease-in-out infinite;
+}
+
+.voice-launch.is-listening .microphone-disc {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes listening-pulse {
+  0%,
+  100% {
+    box-shadow: 0 28px 58px -20px rgba(8, 135, 106, 0.62);
+  }
+
+  50% {
+    box-shadow: 0 28px 62px -12px rgba(8, 135, 106, 0.82);
+  }
 }
 
 .microphone-disc {
@@ -658,6 +681,18 @@ a:focus-visible {
   transform: translate(-50%, 0);
 }
 
+.voice-bridge-frame {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  left: 0;
+  bottom: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
 @media (max-width: 390px) {
   .app-header {
     grid-template-columns: 44px minmax(0, 1fr) 66px;
@@ -719,6 +754,26 @@ a:focus-visible {
   .voice-message {
     gap: 14px;
     padding-inline: 14px;
+  }
+}
+
+@media (max-height: 950px) {
+  .doctor-page {
+    padding-top: 20px;
+    padding-bottom: 24px;
+  }
+
+  .doctor-portrait {
+    width: clamp(184px, 51vw, 210px);
+  }
+
+  .welcome-copy {
+    margin-top: 30px;
+  }
+
+  .voice-launch {
+    width: clamp(154px, 42vw, 176px);
+    margin-top: 34px;
   }
 }
 
