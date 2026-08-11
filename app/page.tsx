@@ -5,6 +5,7 @@ import Image from "next/image";
 
 const CHAT_URL = "https://choi-coder.github.io/ai-for-elder/";
 const VOICE_TRIGGER_SELECTOR = ".ffd540ddb0af088e506e";
+const VOICE_END_SELECTOR = 'button[class~="!coz-fg-hglt-red"].coze-chat-sdk-semi-button-with-icon-only';
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function asset(path: string) {
@@ -49,6 +50,7 @@ export default function Home() {
   const listeningRef = useRef(false);
   const voiceBridgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voiceBridgeAttemptsRef = useRef(0);
+  const voiceFrameResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callEndedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,6 +59,7 @@ export default function Home() {
     return () => {
       if (voiceTimerRef.current) clearTimeout(voiceTimerRef.current);
       if (voiceBridgeTimerRef.current) clearTimeout(voiceBridgeTimerRef.current);
+      if (voiceFrameResetTimerRef.current) clearTimeout(voiceFrameResetTimerRef.current);
       if (callEndedTimerRef.current) clearTimeout(callEndedTimerRef.current);
       if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
     };
@@ -111,14 +114,35 @@ export default function Home() {
     tryStartEmbeddedVoice();
   }
 
+  function tryEndEmbeddedVoice() {
+    try {
+      const frameDocument = voiceFrameRef.current?.contentDocument;
+      const endCallButton = frameDocument?.querySelector<HTMLButtonElement>(VOICE_END_SELECTOR);
+
+      if (endCallButton && endCallButton.getAttribute("aria-disabled") !== "true") {
+        endCallButton.click();
+        return true;
+      }
+    } catch {
+      // 本地开发时无法跨来源控制线上语音页，部署后两个页面同源即可正常点击。
+    }
+
+    return false;
+  }
+
   function stopListening() {
+    const endedThroughVoicePage = tryEndEmbeddedVoice();
     listeningRef.current = false;
     setListening(false);
     clearVoiceBridgeTimer();
     voiceBridgeAttemptsRef.current = 0;
 
-    // 重新载入内嵌语音页会同时结束其中的音频播放和媒体连接。
-    setVoiceFrameKey((currentKey) => currentKey + 1);
+    // 先让目标页发送挂断请求，再重载内嵌页，确保声音与麦克风连接均被释放。
+    if (voiceFrameResetTimerRef.current) clearTimeout(voiceFrameResetTimerRef.current);
+    voiceFrameResetTimerRef.current = setTimeout(
+      () => setVoiceFrameKey((currentKey) => currentKey + 1),
+      endedThroughVoicePage ? 600 : 0,
+    );
     setCallEnded(true);
     if (callEndedTimerRef.current) clearTimeout(callEndedTimerRef.current);
     callEndedTimerRef.current = setTimeout(() => setCallEnded(false), 2000);
