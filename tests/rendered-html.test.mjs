@@ -39,6 +39,9 @@ test("includes all health-record interactions in the client page", async () => {
   assert.match(source, /正在聆听/);
   assert.match(source, /通话结束/);
   assert.match(source, /VOICE_TRIGGER_SELECTOR/);
+  assert.match(source, /VOICE_END_SELECTOR/);
+  assert.match(source, /!coz-fg-hglt-red/);
+  assert.match(source, /endCallButton\.click\(\)/);
   assert.match(source, /allow="microphone; autoplay"/);
   assert.match(source, /showModal\(\)/);
 });
